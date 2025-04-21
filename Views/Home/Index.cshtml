@@ -1,0 +1,198 @@
+@{
+    ViewData["Title"] = "Dashboard";
+    var recentExpenses = ViewBag.RecentExpenses as IEnumerable<Expense>;
+    var summary = ViewBag.Summary as ExpenseSummary;
+    var monthlyChart = ViewBag.MonthlyChart as ChartData;
+    var categoryChart = ViewBag.CategoryChart as ChartData;
+}
+
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="display-4 mb-4">Expense Tracker Dashboard</h1>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6 mb-4 mb-md-0">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-graph-up"></i> Monthly Spending
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="monthlyExpensesChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-pie-chart"></i> Spending by Category
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="categoryExpensesChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4 mb-4 mb-md-0">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-cash"></i> Summary (Last 30 Days)
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between mb-3">
+                    <span>Total Expenses:</span>
+                    <span class="text-primary fw-bold">@summary.TotalAmount.ToString("C")</span>
+                </div>
+                <h6 class="border-bottom pb-2 mb-3">By Category</h6>
+                @if (summary.AmountByCategory.Any())
+                {
+                    @foreach (var category in summary.AmountByCategory.OrderByDescending(c => c.Value))
+                    {
+                        <div class="d-flex justify-content-between mb-2 small">
+                            <span>@category.Key</span>
+                            <span class="text-primary">@category.Value.ToString("C")</span>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <p class="text-muted">No expenses in this period</p>
+                }
+            </div>
+            <div class="card-footer bg-white text-center">
+                <a href="/Expense/Report" class="btn btn-sm btn-outline-primary">View Detailed Reports</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-clock-history"></i> Recent Expenses
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Date</th>
+                                <th>Category</th>
+                                <th>Amount</th>
+                                <th>Notes</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (recentExpenses.Any())
+                            {
+                                @foreach (var expense in recentExpenses)
+                                {
+                                    <tr>
+                                        <td>@expense.Date.ToString("MMM dd, yyyy")</td>
+                                        <td>@expense.Category</td>
+                                        <td>@expense.Amount.ToString("C")</td>
+                                        <td class="text-truncate" style="max-width: 150px;">@expense.Notes</td>
+                                        <td class="text-end">
+                                            <a href="/Expense/Edit/@expense.Id" class="btn btn-sm btn-outline-secondary">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="5" class="text-center py-3">No recent expenses found</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer bg-white text-center">
+                <a href="/Expense" class="btn btn-sm btn-outline-primary">View All Expenses</a>
+                <a href="/Expense/Create" class="btn btn-sm btn-primary">Add New Expense</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Monthly expenses chart
+        const monthlyCtx = document.getElementById('monthlyExpensesChart').getContext('2d');
+        const monthlyLabels = @Html.Raw(Json.Serialize(monthlyChart.Labels));
+        const monthlyData = @Html.Raw(Json.Serialize(monthlyChart.Values));
+        
+        new Chart(monthlyCtx, {
+            type: 'bar',
+            data: {
+                labels: monthlyLabels,
+                datasets: [{
+                    label: 'Monthly Expenses',
+                    data: monthlyData,
+                    backgroundColor: 'rgba(13, 110, 253, 0.7)',
+                    borderColor: 'rgb(13, 110, 253)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        
+        // Category expenses chart
+        const categoryCtx = document.getElementById('categoryExpensesChart').getContext('2d');
+        const categoryLabels = @Html.Raw(Json.Serialize(categoryChart.Labels));
+        const categoryData = @Html.Raw(Json.Serialize(categoryChart.Values));
+        
+        new Chart(categoryCtx, {
+            type: 'doughnut',
+            data: {
+                labels: categoryLabels,
+                datasets: [{
+                    data: categoryData,
+                    backgroundColor: [
+                        'rgba(13, 110, 253, 0.7)',
+                        'rgba(25, 135, 84, 0.7)',
+                        'rgba(220, 53, 69, 0.7)',
+                        'rgba(255, 193, 7, 0.7)',
+                        'rgba(111, 66, 193, 0.7)',
+                        'rgba(32, 201, 151, 0.7)',
+                        'rgba(253, 126, 20, 0.7)',
+                        'rgba(13, 202, 240, 0.7)',
+                        'rgba(108, 117, 125, 0.7)',
+                        'rgba(214, 51, 132, 0.7)',
+                        'rgba(0, 142, 204, 0.7)',
+                        'rgba(154, 132, 121, 0.7)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                    }
+                }
+            }
+        });
+    </script>
+}

@@ -1,0 +1,222 @@
+@model ExpenseReportViewModel
+@{
+    ViewData["Title"] = "Expense Reports";
+}
+
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="display-4 mb-4">Expense Reports</h1>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12 mb-4">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-graph-up"></i> Monthly Expenses (Last 12 Months)
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="monthlyExpensesChart" height="150"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-5 mb-4 mb-md-0">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-pie-chart"></i> Spending by Category
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="categoryExpensesChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-7">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-list-columns"></i> Category Breakdown
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Category</th>
+                                <th class="text-end">Amount</th>
+                                <th class="text-end">% of Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Summary.AmountByCategory.Any())
+                            {
+                                @foreach (var category in Model.Summary.AmountByCategory.OrderByDescending(c => c.Value))
+                                {
+                                    var percentage = Model.Summary.TotalAmount > 0 
+                                        ? (category.Value / Model.Summary.TotalAmount) * 100 
+                                        : 0;
+                                    <tr>
+                                        <td>@category.Key</td>
+                                        <td class="text-end">@category.Value.ToString("C")</td>
+                                        <td class="text-end">@percentage.ToString("0.0")%</td>
+                                    </tr>
+                                }
+                                <tr class="table-light fw-bold">
+                                    <td>Total</td>
+                                    <td class="text-end">@Model.Summary.TotalAmount.ToString("C")</td>
+                                    <td class="text-end">100%</td>
+                                </tr>
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="3" class="text-center py-3">No expenses found</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-calendar3"></i> Monthly Breakdown
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Month</th>
+                                <th class="text-end">Amount</th>
+                                <th class="text-end">Monthly Change</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @{
+                                decimal? previousAmount = null;
+                            }
+                            @if (Model.Summary.AmountByMonth.Any())
+                            {
+                                @foreach (var month in Model.Summary.AmountByMonth.OrderByDescending(m => m.Key))
+                                {
+                                    var changePercentage = previousAmount.HasValue && previousAmount.Value > 0
+                                        ? ((month.Value - previousAmount.Value) / previousAmount.Value) * 100
+                                        : 0;
+                                    
+                                    <tr>
+                                        <td>@month.Key</td>
+                                        <td class="text-end">@month.Value.ToString("C")</td>
+                                        <td class="text-end">
+                                            @if (previousAmount.HasValue)
+                                            {
+                                                <span class="@(changePercentage < 0 ? "text-success" : changePercentage > 0 ? "text-danger" : "")">
+                                                    @(changePercentage > 0 ? "+" : "")@changePercentage.ToString("0.0")%
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span>-</span>
+                                            }
+                                        </td>
+                                    </tr>
+                                    
+                                    previousAmount = month.Value;
+                                }
+                            }
+                            else
+                            {
+                                <tr>
+                                    <td colspan="3" class="text-center py-3">No monthly data available</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // Monthly expenses chart
+        const monthlyCtx = document.getElementById('monthlyExpensesChart').getContext('2d');
+        const monthlyLabels = @Html.Raw(Json.Serialize(Model.MonthlyChart.Labels));
+        const monthlyData = @Html.Raw(Json.Serialize(Model.MonthlyChart.Values));
+        
+        new Chart(monthlyCtx, {
+            type: 'bar',
+            data: {
+                labels: monthlyLabels,
+                datasets: [{
+                    label: 'Monthly Expenses',
+                    data: monthlyData,
+                    backgroundColor: 'rgba(13, 110, 253, 0.7)',
+                    borderColor: 'rgb(13, 110, 253)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+        
+        // Category expenses chart
+        const categoryCtx = document.getElementById('categoryExpensesChart').getContext('2d');
+        const categoryLabels = @Html.Raw(Json.Serialize(Model.CategoryChart.Labels));
+        const categoryData = @Html.Raw(Json.Serialize(Model.CategoryChart.Values));
+        
+        new Chart(categoryCtx, {
+            type: 'doughnut',
+            data: {
+                labels: categoryLabels,
+                datasets: [{
+                    data: categoryData,
+                    backgroundColor: [
+                        'rgba(13, 110, 253, 0.7)',
+                        'rgba(25, 135, 84, 0.7)',
+                        'rgba(220, 53, 69, 0.7)',
+                        'rgba(255, 193, 7, 0.7)',
+                        'rgba(111, 66, 193, 0.7)',
+                        'rgba(32, 201, 151, 0.7)',
+                        'rgba(253, 126, 20, 0.7)',
+                        'rgba(13, 202, 240, 0.7)',
+                        'rgba(108, 117, 125, 0.7)',
+                        'rgba(214, 51, 132, 0.7)',
+                        'rgba(0, 142, 204, 0.7)',
+                        'rgba(154, 132, 121, 0.7)'
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                    }
+                }
+            }
+        });
+    </script>
+}

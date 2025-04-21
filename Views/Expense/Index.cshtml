@@ -1,0 +1,107 @@
+@model ExpenseViewModel
+@{
+    ViewData["Title"] = "Expenses";
+}
+
+<div class="row mb-4">
+    <div class="col">
+        <h1 class="display-4 mb-4">Expenses</h1>
+    </div>
+    <div class="col-auto">
+        <a href="/Expense/Create" class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> Add New Expense
+        </a>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+    <div class="card-header bg-light">
+        <h5 class="mb-0">Filter Expenses</h5>
+    </div>
+    <div class="card-body">
+        <form method="get" action="/Expense" id="filterForm">
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label asp-for="Filter.StartDate" class="form-label"></label>
+                    <input asp-for="Filter.StartDate" class="form-control" />
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label asp-for="Filter.EndDate" class="form-label"></label>
+                    <input asp-for="Filter.EndDate" class="form-control" />
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label asp-for="Filter.Category" class="form-label"></label>
+                    <select asp-for="Filter.Category" class="form-select">
+                        <option value="All">All Categories</option>
+                        @foreach (var category in Model.Categories)
+                        {
+                            <option value="@category">@category</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="text-end">
+                <button type="submit" class="btn btn-primary">Apply Filter</button>
+                <a href="/Expense" class="btn btn-outline-secondary">Reset</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card shadow-sm">
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Expense List</h5>
+        <span class="text-muted">
+            @if (Model.Expenses.Any())
+            {
+                <span>Total: @Model.Expenses.Sum(e => e.Amount).ToString("C")</span>
+            }
+        </span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Date</th>
+                        <th>Category</th>
+                        <th>Amount</th>
+                        <th>Notes</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model.Expenses.Any())
+                    {
+                        @foreach (var expense in Model.Expenses)
+                        {
+                            <tr>
+                                <td>@expense.Date.ToString("MMM dd, yyyy")</td>
+                                <td>@expense.Category</td>
+                                <td>@expense.Amount.ToString("C")</td>
+                                <td class="text-truncate" style="max-width: 250px;">@expense.Notes</td>
+                                <td class="text-end">
+                                    <a href="/Expense/Edit/@expense.Id" class="btn btn-sm btn-outline-secondary" title="Edit">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="/Expense/Delete/@expense.Id" class="btn btn-sm btn-outline-danger ms-1" title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center py-3">
+                                <p class="mb-0 text-muted">No expenses found</p>
+                                <small class="text-muted">Try changing the filter criteria or add a new expense</small>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
